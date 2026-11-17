@@ -1,7 +1,5 @@
 FROM node:22-alpine
 
-ARG PORT=3000
-
 WORKDIR /app
 
 COPY package*.json ./
@@ -12,6 +10,6 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE ${PORT}
+EXPOSE 3000
 
 CMD ["node","dist/main"]
