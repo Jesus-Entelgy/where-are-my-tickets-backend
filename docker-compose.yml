@@ -20,13 +20,15 @@ services:
     build:
       context: .
       args:
-        PORT: ${PORT:?Set PORT in .env}
+        PORT: ${DOCKER_PORT:?Set DOCKER_PORT in .env}
     container_name: nestjs-api
     restart: unless-stopped
     ports:
-      - "${PORT:?Set PORT in .env}:${PORT:?Set PORT in .env}"
+      - "${DOCKER_PORT:?Set DOCKER_PORT in .env}:${DOCKER_PORT:?Set DOCKER_PORT in .env}"
     env_file:
       - .env
+    environment:
+      PORT: ${DOCKER_PORT:?Set DOCKER_PORT in .env}
     depends_on:
       - postgres
 
