@@ -3,16 +3,20 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { randomBytes, scrypt } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { LoginUserDto } from './dto/login-user.dto.js';
 import { UserResponseDto } from './dto/user-response.dto.js';
 import { User } from './user.entity.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SCRYPT_PARAMETERS = { N: 16384, r: 8, p: 1 };
+const SCRYPT_HASH_PATTERN =
+  /^scrypt\$16384\$8\$1\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{86})$/;
 
 @Injectable()
 export class UsersService {
@@ -50,6 +54,29 @@ export class UsersService {
 
       throw error;
     }
+  }
+
+  async login(input: LoginUserDto): Promise<UserResponseDto> {
+    const credentials = this.validateLoginInput(input);
+    const user = await this.usersRepository.findOne({
+      where: { email: credentials.email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        password: true,
+      },
+    });
+
+    if (
+      !user ||
+      !(await this.verifyPassword(credentials.password, user.password))
+    ) {
+      throw new UnauthorizedException('Email o contraseña incorrectos');
+    }
+
+    return this.toResponse(user);
   }
 
   async getAll(): Promise<UserResponseDto[]> {
@@ -124,7 +151,56 @@ export class UsersService {
 
   private async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(16);
-    const hash = await new Promise<Buffer>((resolve, reject) => {
+    const hash = await this.deriveScryptKey(password, salt);
+
+    return `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`;
+  }
+
+  private validateLoginInput(input: LoginUserDto): {
+    email: string;
+    password: string;
+  } {
+    if (
+      typeof input !== 'object' ||
+      input === null ||
+      typeof input.email !== 'string' ||
+      typeof input.password !== 'string'
+    ) {
+      throw new BadRequestException('Invalid login data');
+    }
+
+    const email = input.email.trim().toLowerCase();
+    if (
+      email.length === 0 ||
+      email.length > 255 ||
+      !EMAIL_PATTERN.test(email) ||
+      input.password.length === 0 ||
+      input.password.length > 1024
+    ) {
+      throw new BadRequestException('Invalid login data');
+    }
+
+    return { email, password: input.password };
+  }
+
+  private async verifyPassword(
+    password: string,
+    storedHash: string,
+  ): Promise<boolean> {
+    const match = SCRYPT_HASH_PATTERN.exec(storedHash);
+    if (!match) {
+      throw new Error('Stored password hash has an unsupported format');
+    }
+
+    const salt = Buffer.from(match[1], 'base64url');
+    const expectedHash = Buffer.from(match[2], 'base64url');
+    const actualHash = await this.deriveScryptKey(password, salt);
+
+    return timingSafeEqual(actualHash, expectedHash);
+  }
+
+  private deriveScryptKey(password: string, salt: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
       scrypt(password, salt, 64, SCRYPT_PARAMETERS, (error, derivedKey) => {
         if (error) {
           reject(error);
@@ -134,8 +210,6 @@ export class UsersService {
         resolve(derivedKey);
       });
     });
-
-    return `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`;
   }
 
   private isEmailUniqueViolation(error: unknown): boolean {

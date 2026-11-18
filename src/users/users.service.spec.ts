@@ -4,7 +4,9 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { scryptSync } from 'node:crypto';
 import { User } from './user.entity.js';
 import { UsersService } from './users.service.js';
 
@@ -153,5 +155,78 @@ describe('UsersService', () => {
 
     expect(usersRepository.findOne).not.toHaveBeenCalled();
     expect(usersRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('logs in with a matching password hash without returning the hash', async () => {
+    const password = 'correct password';
+    const salt = Buffer.from('00112233445566778899aabbccddeeff', 'hex');
+    const hash = scryptSync(password, salt, 64, {
+      N: 16384,
+      r: 8,
+      p: 1,
+    });
+    usersRepository.findOne.mockResolvedValue({
+      id: '1',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+      password: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+    });
+
+    await expect(
+      usersService.login({
+        email: ' ANA@Example.COM ',
+        password,
+      }),
+    ).resolves.toEqual({
+      id: '1',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+    });
+    expect(usersRepository.findOne).toHaveBeenCalledWith({
+      where: { email: 'ana@example.com' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        password: true,
+      },
+    });
+  });
+
+  it('rejects an incorrect password', async () => {
+    const salt = Buffer.from('00112233445566778899aabbccddeeff', 'hex');
+    const hash = scryptSync('correct password', salt, 64, {
+      N: 16384,
+      r: 8,
+      p: 1,
+    });
+    usersRepository.findOne.mockResolvedValue({
+      id: '1',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+      password: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+    });
+
+    await expect(
+      usersService.login({
+        email: 'ana@example.com',
+        password: 'wrong password',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects login when the email is not registered', async () => {
+    usersRepository.findOne.mockResolvedValue(null);
+
+    await expect(
+      usersService.login({
+        email: 'missing@example.com',
+        password: 'some password',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
