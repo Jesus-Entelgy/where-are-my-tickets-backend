@@ -1,7 +1,5 @@
 services:
-
   postgres:
-
     image: postgres:17
     restart: unless-stopped
     environment:
@@ -10,17 +8,24 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
 
     ports:
-      - "${DB_HOST_PORT:?Set DB_HOST_PORT in the selected env file}:5432"
+      - '${DB_HOST_PORT:?Set DB_HOST_PORT in the selected env file}:5432'
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 3s
 
   backend:
     build:
       context: .
     restart: unless-stopped
     ports:
-      - "${APP_HOST_PORT:?Set APP_HOST_PORT in the selected env file}:3000"
+      - '${APP_HOST_PORT:?Set APP_HOST_PORT in the selected env file}:3000'
     env_file:
       - .env.${APP_ENV:?Set APP_ENV in the selected env file}
     environment:
