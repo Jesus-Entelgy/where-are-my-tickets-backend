@@ -96,7 +96,7 @@ Este comando detiene el contenedor de PostgreSQL, pero no elimina el volumen. Lo
 
 ## Guía para el equipo frontend
 
-### Preparación inicial
+### Preparación inicial del equipo frontend
 
 Requisitos: Docker Desktop en ejecución, Node.js/npm para ejecutar los scripts y acceso al repositorio del backend.
 
