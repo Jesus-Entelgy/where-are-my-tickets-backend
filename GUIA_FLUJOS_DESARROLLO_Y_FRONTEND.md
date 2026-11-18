@@ -49,13 +49,15 @@ Desde la carpeta raíz del backend:
 
 ### Inicio del trabajo diario
 
-1. Inicia solo PostgreSQL en Docker:
+1. Prepara la base local:
 
    ```powershell
    npm run app:up
    ```
 
-   Se publica en `localhost:5432`. El volumen conserva los datos entre reinicios.
+   El comando espera a que PostgreSQL esté listo, aplica las migraciones pendientes y después vacía las tablas declaradas como entidades y las vuelve a sembrar. Los usuarios de prueba usan `password123`; son solo para desarrollo. Aunque el volumen de Docker se conserva, los datos de las tablas se reinician cada vez que se ejecuta `app:up`. PostgreSQL se publica en `localhost:5432`.
+
+   TypeORM no compara automáticamente las entidades con el esquema de PostgreSQL. Cuando cambie el esquema, crea una nueva migración; `app:up` ejecutará las que aún no estén registradas como aplicadas.
 
 2. En otra terminal, inicia NestJS en modo watch:
 
@@ -90,7 +92,7 @@ Desde la carpeta raíz del backend:
    npm run app:down
    ```
 
-Este comando detiene el contenedor de PostgreSQL, pero no elimina el volumen ni los datos.
+Este comando detiene el contenedor de PostgreSQL, pero no elimina el volumen. Los datos se reiniciarán la próxima vez que ejecutes `app:up`.
 
 ## Guía para el equipo frontend
 
@@ -111,11 +113,13 @@ No es necesario instalar las dependencias de NestJS en el host para ejecutar el 
 
 ### Levantar y usar el backend
 
-1. Construye y levanta los contenedores de PostgreSQL y NestJS:
+1. Prepara la base Team y levanta los contenedores de PostgreSQL y NestJS:
 
    ```powershell
    npm run app:up:team
    ```
+
+   Antes de arrancar el backend, el comando espera a PostgreSQL, aplica migraciones pendientes, vacía las tablas declaradas como entidades y las siembra con los usuarios de prueba. **Cada ejecución de `app:up:team` elimina los datos actuales de esas tablas en Team.** Las contraseñas de prueba son `password123`; no uses estos usuarios fuera del entorno de desarrollo.
 
 2. Comprueba que ambos servicios estén activos:
 
@@ -137,13 +141,13 @@ No es necesario instalar las dependencias de NestJS en el host para ejecutar el 
 
    Swagger está disponible en `http://localhost:3001/api`. PostgreSQL se publica en `localhost:5433` si se necesita conectar con una herramienta local, como DBeaver.
 
-4. Al terminar el trabajo, detén y elimina los contenedores del stack Team:
+4. Al terminar el trabajo, detén los contenedores del stack Team:
 
    ```powershell
    npm run app:down:team
    ```
 
-Este comando conserva el volumen de la base de datos. No añadas `-v` a `docker compose down` salvo que quieras eliminar permanentemente esos datos.
+Este comando detiene los contenedores y conserva el volumen. Los datos de las tablas se reiniciarán la próxima vez que ejecutes `app:up:team`.
 
 ### Integración con el frontend
 

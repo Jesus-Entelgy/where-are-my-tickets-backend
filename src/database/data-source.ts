@@ -1,6 +1,5 @@
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
-import { User } from '../users/user.entity.js';
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -22,7 +21,7 @@ export default new DataSource({
   username: getRequiredEnv('DB_USER'),
   password: getRequiredEnv('DB_PASSWORD'),
   database: getRequiredEnv('DB_NAME'),
-  entities: [User],
+  entities: [join(import.meta.dirname, '..', '**', '*.entity.js')],
   migrations: [join(import.meta.dirname, 'migrations', '*.js')],
   synchronize: false,
 });
