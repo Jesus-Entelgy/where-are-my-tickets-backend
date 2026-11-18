@@ -109,7 +109,7 @@ Requisitos: Docker Desktop en ejecución, Node.js/npm para ejecutar los scripts 
 
 3. Edita `.env.team` y sustituye `DB_PASSWORD` por una contraseña local. No compartas ni subas `.env.team`.
 
-No es necesario instalar las dependencias de NestJS en el host para ejecutar el stack Team: Docker construye la imagen del backend.
+`app:up:team` comprueba las dependencias locales necesarias para ejecutar las migraciones y la semilla. Si faltan o están incompletas, instala automáticamente las dependencias (incluidas las de desarrollo) con `npm ci --include=dev`.
 
 ### Levantar y usar el backend
 
