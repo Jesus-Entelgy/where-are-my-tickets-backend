@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ApplicationsModule } from './applications/applications.module.js';
-import { Ticket } from './tickets/ticket.entity.js';
+import { TicketsModule } from './tickets/tickets.module.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
@@ -27,9 +27,9 @@ import { UsersModule } from './users/users.module.js';
         autoLoadEntities: true,
       }),
     }),
-    TypeOrmModule.forFeature([Ticket]),
     UsersModule,
     ApplicationsModule,
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
