@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -19,6 +20,7 @@ export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   'CHK_tickets_status',
   `"status" IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')`,
 )
+@Unique('UQ_tickets_title', ['title'])
 export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
