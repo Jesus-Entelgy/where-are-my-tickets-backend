@@ -40,11 +40,13 @@ export class TicketsController {
 
   @Get('by-user/:userId')
   @ApiOperation({ summary: 'List tickets assigned to a user' })
-  @ApiParam({ name: 'userId', example: '1' })
+  @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiOkResponse({ type: TicketResponseDto, isArray: true })
   @ApiBadRequestResponse({ description: 'Invalid user ID' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  getByUserId(@Param('userId') userId: string): Promise<TicketResponseDto[]> {
+  getByUserId(
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<TicketResponseDto[]> {
     return this.ticketsService.getByUserId(userId);
   }
 

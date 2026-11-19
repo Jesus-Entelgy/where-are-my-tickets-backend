@@ -18,7 +18,8 @@ import {
 import { Ticket } from './ticket.entity.js';
 import { User } from '../users/user.entity.js';
 
-const MAX_BIGINT_ID = '9223372036854775807';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class TicketsService {
@@ -167,7 +168,7 @@ export class TicketsService {
       description: input.description ?? null,
       priority: input.priority,
       status: input.status,
-      userId: input.userId.trim(),
+      userId: input.userId.trim().toLowerCase(),
     };
   }
 
@@ -176,21 +177,11 @@ export class TicketsService {
       throw new BadRequestException('Invalid user ID');
     }
 
-    return userId.trim();
+    return userId.trim().toLowerCase();
   }
 
   private isValidUserId(userId: unknown): userId is string {
-    if (typeof userId !== 'string') {
-      return false;
-    }
-
-    const normalizedUserId = userId.trim();
-    return (
-      /^[1-9]\d*$/.test(normalizedUserId) &&
-      (normalizedUserId.length < MAX_BIGINT_ID.length ||
-        (normalizedUserId.length === MAX_BIGINT_ID.length &&
-          normalizedUserId <= MAX_BIGINT_ID))
-    );
+    return typeof userId === 'string' && UUID_PATTERN.test(userId.trim());
   }
 
   private async ensureUserExists(userId: string): Promise<void> {

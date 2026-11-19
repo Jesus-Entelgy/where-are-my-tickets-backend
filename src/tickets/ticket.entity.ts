@@ -47,7 +47,7 @@ export class Ticket {
   @Column({ type: 'varchar', length: 20, nullable: false })
   status: TicketStatus;
 
-  @Column({ name: 'user_id', type: 'bigint', nullable: false })
+  @Column({ name: 'user_id', type: 'uuid', nullable: false })
   userId: string;
 
   @CreateDateColumn({

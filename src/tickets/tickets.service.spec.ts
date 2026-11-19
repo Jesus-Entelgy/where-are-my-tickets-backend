@@ -13,6 +13,7 @@ import { User } from '../users/user.entity.js';
 
 describe('TicketsService', () => {
   let ticketsService: TicketsService;
+  const userId = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
 
   const ticketsRepository = {
     delete: vi.fn(),
@@ -33,14 +34,14 @@ describe('TicketsService', () => {
     description: 'Review sprint outcomes',
     priority: 'HIGH' as const,
     status: 'OPEN' as const,
-    userId: '1',
+    userId,
     createdAt: new Date('2026-11-19T10:00:00.000Z'),
     updatedAt: new Date('2026-11-19T11:00:00.000Z'),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    usersRepository.findOne.mockResolvedValue({ id: '1' });
+    usersRepository.findOne.mockResolvedValue({ id: userId });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,30 +73,30 @@ describe('TicketsService', () => {
   it('returns tickets assigned to an existing user', async () => {
     ticketsRepository.find.mockResolvedValue([ticket]);
 
-    await expect(ticketsService.getByUserId('1')).resolves.toEqual([ticket]);
+    await expect(ticketsService.getByUserId(userId)).resolves.toEqual([ticket]);
     expect(usersRepository.findOne).toHaveBeenCalledWith({
-      where: { id: '1' },
+      where: { id: userId },
       select: { id: true },
     });
     expect(ticketsRepository.find).toHaveBeenCalledWith({
-      where: { userId: '1' },
+      where: { userId },
       order: { updatedAt: 'DESC' },
     });
   });
 
   it('rejects invalid user IDs before querying the database', async () => {
-    await expect(ticketsService.getByUserId('0')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      ticketsService.getByUserId('not-a-uuid'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(usersRepository.findOne).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException when the requested user does not exist', async () => {
     usersRepository.findOne.mockResolvedValue(null);
 
-    await expect(ticketsService.getByUserId('2')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      ticketsService.getByUserId('9b63c2bf-f85f-4e15-84a8-88d75840f23a'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(ticketsRepository.find).not.toHaveBeenCalled();
   });
 
@@ -150,7 +151,7 @@ describe('TicketsService', () => {
         title: '  Prepare sprint review  ',
         priority: 'HIGH',
         status: 'OPEN',
-        userId: '1',
+        userId,
       }),
     ).resolves.toEqual({ ...ticket, description: null });
     expect(ticketsRepository.save).toHaveBeenCalledWith({
@@ -158,7 +159,7 @@ describe('TicketsService', () => {
       description: null,
       priority: 'HIGH',
       status: 'OPEN',
-      userId: '1',
+      userId,
     });
   });
 
@@ -168,7 +169,7 @@ describe('TicketsService', () => {
         title: '   ',
         priority: 'HIGH',
         status: 'OPEN',
-        userId: '1',
+        userId,
       }),
     ).rejects.toMatchObject({ status: 400 });
     expect(ticketsRepository.save).not.toHaveBeenCalled();
@@ -187,7 +188,7 @@ describe('TicketsService', () => {
         title: ticket.title,
         priority: 'HIGH',
         status: 'OPEN',
-        userId: '1',
+        userId,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
@@ -198,7 +199,7 @@ describe('TicketsService', () => {
         title: 'New ticket',
         priority: 'HIGH',
         status: 'OPEN',
-        userId: '0',
+        userId: 'not-a-uuid',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(usersRepository.findOne).not.toHaveBeenCalled();
@@ -213,7 +214,7 @@ describe('TicketsService', () => {
         title: 'New ticket',
         priority: 'HIGH',
         status: 'OPEN',
-        userId: '2',
+        userId: '9b63c2bf-f85f-4e15-84a8-88d75840f23a',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(ticketsRepository.save).not.toHaveBeenCalled();

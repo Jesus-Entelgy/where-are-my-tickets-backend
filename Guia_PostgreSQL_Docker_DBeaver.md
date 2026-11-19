@@ -137,8 +137,10 @@ https://dbeaver.io/download/
 # Paso 13: Crear tablas
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
