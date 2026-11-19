@@ -4,7 +4,7 @@ export class CreateTickets1795090738503 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
     await queryRunner.query(`
-      CREATE TABLE "tickets" (
+      CREATE TABLE IF NOT EXISTS "tickets" (
         "id" UUID NOT NULL DEFAULT gen_random_uuid(),
         "title" VARCHAR(255) NOT NULL,
         "description" TEXT,
