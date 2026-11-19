@@ -63,32 +63,19 @@ const SEED_APPLICATIONS: Array<Omit<Application, 'id'>> = [
   { name: 'Código Central' },
 ];
 
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""')}"`;
-}
-
 await dataSource.initialize();
 
 try {
-  const tables = dataSource.entityMetadatas.map(({ schema, tableName }) =>
-    schema
-      ? `${quoteIdentifier(schema)}.${quoteIdentifier(tableName)}`
-      : quoteIdentifier(tableName),
-  );
-
   await dataSource.transaction(async (manager) => {
-    if (tables.length > 0) {
-      await manager.query(
-        `TRUNCATE TABLE ${tables.join(', ')} RESTART IDENTITY CASCADE`,
-      );
-    }
-
+    await manager.query(
+      'TRUNCATE TABLE "users", "applications" RESTART IDENTITY',
+    );
     await manager.getRepository(User).insert(SEED_USERS);
     await manager.getRepository(Application).insert(SEED_APPLICATIONS);
   });
 
   console.info(
-    `Database reset; seeded ${SEED_USERS.length} users and ${SEED_APPLICATIONS.length} applications.`,
+    `Seeded ${SEED_USERS.length} users and ${SEED_APPLICATIONS.length} applications.`,
   );
 } finally {
   await dataSource.destroy();

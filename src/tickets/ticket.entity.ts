@@ -1,0 +1,51 @@
+import {
+  Check,
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+@Entity({ name: 'tickets' })
+@Check(
+  'CHK_tickets_priority',
+  `"priority" IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')`,
+)
+@Check(
+  'CHK_tickets_status',
+  `"status" IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')`,
+)
+export class Ticket {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: false })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: false })
+  priority: TicketPriority;
+
+  @Column({ type: 'varchar', length: 20, nullable: false })
+  status: TicketStatus;
+
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  createdAt: Date;
+
+  @UpdateDateColumn({
+    name: 'updated_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updatedAt: Date;
+}
