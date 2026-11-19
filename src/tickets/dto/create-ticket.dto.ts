@@ -18,4 +18,7 @@ export class CreateTicketDto {
 
   @ApiProperty({ enum: TICKET_STATUSES, example: 'OPEN' })
   status: TicketStatus;
+
+  @ApiProperty({ example: '1' })
+  userId: string;
 }

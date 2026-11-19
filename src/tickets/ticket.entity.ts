@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
@@ -29,6 +30,7 @@ export type TicketStatus = (typeof TICKET_STATUSES)[number];
   `"status" IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED')`,
 )
 @Unique('UQ_tickets_title', ['title'])
+@Index('IDX_tickets_user_id', ['userId'])
 export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -44,6 +46,9 @@ export class Ticket {
 
   @Column({ type: 'varchar', length: 20, nullable: false })
   status: TicketStatus;
+
+  @Column({ name: 'user_id', type: 'bigint', nullable: false })
+  userId: string;
 
   @CreateDateColumn({
     name: 'created_at',

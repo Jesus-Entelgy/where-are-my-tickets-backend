@@ -16,18 +16,35 @@ import {
   type TicketStatus,
 } from './ticket.entity.js';
 import { Ticket } from './ticket.entity.js';
+import { User } from '../users/user.entity.js';
+
+const MAX_BIGINT_ID = '9223372036854775807';
 
 @Injectable()
 export class TicketsService {
   constructor(
     @InjectRepository(Ticket)
     private readonly ticketsRepository: Repository<Ticket>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
   ) {}
 
   async getAll(): Promise<TicketResponseDto[]> {
     const tickets = await this.ticketsRepository.find({
       order: { updatedAt: 'DESC' },
       take: 50,
+    });
+
+    return tickets.map((ticket) => this.toResponse(ticket));
+  }
+
+  async getByUserId(userId: string): Promise<TicketResponseDto[]> {
+    const normalizedUserId = this.validateUserId(userId);
+    await this.ensureUserExists(normalizedUserId);
+
+    const tickets = await this.ticketsRepository.find({
+      where: { userId: normalizedUserId },
+      order: { updatedAt: 'DESC' },
     });
 
     return tickets.map((ticket) => this.toResponse(ticket));
@@ -103,6 +120,7 @@ export class TicketsService {
 
   async create(input: CreateTicketDto): Promise<TicketResponseDto> {
     const ticketInput = this.validateAndNormalize(input);
+    await this.ensureUserExists(ticketInput.userId);
 
     try {
       const ticket = await this.ticketsRepository.save(ticketInput);
@@ -110,6 +128,10 @@ export class TicketsService {
     } catch (error) {
       if (this.isTitleUniqueViolation(error)) {
         throw new ConflictException('Ya existe un ticket con ese título');
+      }
+
+      if (this.isUserForeignKeyViolation(error)) {
+        throw new NotFoundException('User not found');
       }
 
       throw error;
@@ -123,6 +145,7 @@ export class TicketsService {
       typeof input.title !== 'string' ||
       !this.isTicketPriority(input.priority) ||
       !this.isTicketStatus(input.status) ||
+      typeof input.userId !== 'string' ||
       (input.description !== undefined &&
         input.description !== null &&
         typeof input.description !== 'string')
@@ -131,7 +154,11 @@ export class TicketsService {
     }
 
     const title = input.title.trim();
-    if (title.length === 0 || title.length > 255) {
+    if (
+      title.length === 0 ||
+      title.length > 255 ||
+      !this.isValidUserId(input.userId)
+    ) {
       throw new BadRequestException('Invalid ticket data');
     }
 
@@ -140,7 +167,41 @@ export class TicketsService {
       description: input.description ?? null,
       priority: input.priority,
       status: input.status,
+      userId: input.userId.trim(),
     };
+  }
+
+  private validateUserId(userId: unknown): string {
+    if (!this.isValidUserId(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    return userId.trim();
+  }
+
+  private isValidUserId(userId: unknown): userId is string {
+    if (typeof userId !== 'string') {
+      return false;
+    }
+
+    const normalizedUserId = userId.trim();
+    return (
+      /^[1-9]\d*$/.test(normalizedUserId) &&
+      (normalizedUserId.length < MAX_BIGINT_ID.length ||
+        (normalizedUserId.length === MAX_BIGINT_ID.length &&
+          normalizedUserId <= MAX_BIGINT_ID))
+    );
+  }
+
+  private async ensureUserExists(userId: string): Promise<void> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
   }
 
   private validateUpdate(
@@ -234,6 +295,22 @@ export class TicketsService {
     );
   }
 
+  private isUserForeignKeyViolation(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError: unknown = error.driverError;
+    return (
+      typeof driverError === 'object' &&
+      driverError !== null &&
+      'code' in driverError &&
+      driverError.code === '23503' &&
+      'constraint' in driverError &&
+      driverError.constraint === 'FK_tickets_user_id'
+    );
+  }
+
   private toResponse(ticket: Ticket): TicketResponseDto {
     return {
       id: ticket.id,
@@ -241,6 +318,7 @@ export class TicketsService {
       description: ticket.description,
       priority: ticket.priority,
       status: ticket.status,
+      userId: ticket.userId,
       createdAt: ticket.createdAt,
       updatedAt: ticket.updatedAt,
     };

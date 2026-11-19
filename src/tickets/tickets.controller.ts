@@ -38,6 +38,16 @@ export class TicketsController {
     return this.ticketsService.getAll();
   }
 
+  @Get('by-user/:userId')
+  @ApiOperation({ summary: 'List tickets assigned to a user' })
+  @ApiParam({ name: 'userId', example: '1' })
+  @ApiOkResponse({ type: TicketResponseDto, isArray: true })
+  @ApiBadRequestResponse({ description: 'Invalid user ID' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  getByUserId(@Param('userId') userId: string): Promise<TicketResponseDto[]> {
+    return this.ticketsService.getByUserId(userId);
+  }
+
   @Get('by-title/:title')
   @ApiOperation({ summary: 'Find a ticket by title' })
   @ApiParam({ name: 'title', example: 'Prepare sprint review' })

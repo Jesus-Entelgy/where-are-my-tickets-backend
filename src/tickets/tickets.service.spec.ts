@@ -9,6 +9,7 @@ import { QueryFailedError } from 'typeorm';
 import { Ticket } from './ticket.entity.js';
 import { TicketsService } from './tickets.service.js';
 import { UpdateTicketDto } from './dto/update-ticket.dto.js';
+import { User } from '../users/user.entity.js';
 
 describe('TicketsService', () => {
   let ticketsService: TicketsService;
@@ -22,18 +23,24 @@ describe('TicketsService', () => {
     update: vi.fn(),
   };
 
+  const usersRepository = {
+    findOne: vi.fn(),
+  };
+
   const ticket = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     title: 'Prepare sprint review',
     description: 'Review sprint outcomes',
     priority: 'HIGH' as const,
     status: 'OPEN' as const,
+    userId: '1',
     createdAt: new Date('2026-11-19T10:00:00.000Z'),
     updatedAt: new Date('2026-11-19T11:00:00.000Z'),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    usersRepository.findOne.mockResolvedValue({ id: '1' });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +48,10 @@ describe('TicketsService', () => {
         {
           provide: getRepositoryToken(Ticket),
           useValue: ticketsRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: usersRepository,
         },
       ],
     }).compile();
@@ -56,6 +67,36 @@ describe('TicketsService', () => {
       order: { updatedAt: 'DESC' },
       take: 50,
     });
+  });
+
+  it('returns tickets assigned to an existing user', async () => {
+    ticketsRepository.find.mockResolvedValue([ticket]);
+
+    await expect(ticketsService.getByUserId('1')).resolves.toEqual([ticket]);
+    expect(usersRepository.findOne).toHaveBeenCalledWith({
+      where: { id: '1' },
+      select: { id: true },
+    });
+    expect(ticketsRepository.find).toHaveBeenCalledWith({
+      where: { userId: '1' },
+      order: { updatedAt: 'DESC' },
+    });
+  });
+
+  it('rejects invalid user IDs before querying the database', async () => {
+    await expect(ticketsService.getByUserId('0')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(usersRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when the requested user does not exist', async () => {
+    usersRepository.findOne.mockResolvedValue(null);
+
+    await expect(ticketsService.getByUserId('2')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(ticketsRepository.find).not.toHaveBeenCalled();
   });
 
   it('finds a ticket by its trimmed title', async () => {
@@ -109,6 +150,7 @@ describe('TicketsService', () => {
         title: '  Prepare sprint review  ',
         priority: 'HIGH',
         status: 'OPEN',
+        userId: '1',
       }),
     ).resolves.toEqual({ ...ticket, description: null });
     expect(ticketsRepository.save).toHaveBeenCalledWith({
@@ -116,6 +158,7 @@ describe('TicketsService', () => {
       description: null,
       priority: 'HIGH',
       status: 'OPEN',
+      userId: '1',
     });
   });
 
@@ -125,6 +168,7 @@ describe('TicketsService', () => {
         title: '   ',
         priority: 'HIGH',
         status: 'OPEN',
+        userId: '1',
       }),
     ).rejects.toMatchObject({ status: 400 });
     expect(ticketsRepository.save).not.toHaveBeenCalled();
@@ -143,8 +187,36 @@ describe('TicketsService', () => {
         title: ticket.title,
         priority: 'HIGH',
         status: 'OPEN',
+        userId: '1',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rejects invalid user IDs when creating tickets', async () => {
+    await expect(
+      ticketsService.create({
+        title: 'New ticket',
+        priority: 'HIGH',
+        status: 'OPEN',
+        userId: '0',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersRepository.findOne).not.toHaveBeenCalled();
+    expect(ticketsRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown users when creating tickets', async () => {
+    usersRepository.findOne.mockResolvedValue(null);
+
+    await expect(
+      ticketsService.create({
+        title: 'New ticket',
+        priority: 'HIGH',
+        status: 'OPEN',
+        userId: '2',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(ticketsRepository.save).not.toHaveBeenCalled();
   });
 
   it('updates only the provided fields and returns the updated ticket', async () => {

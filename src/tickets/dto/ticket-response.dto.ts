@@ -22,6 +22,9 @@ export class TicketResponseDto {
   @ApiProperty({ enum: TICKET_STATUSES, example: 'OPEN' })
   status: TicketStatus;
 
+  @ApiProperty({ example: '1' })
+  userId: string;
+
   @ApiProperty({ format: 'date-time' })
   createdAt: Date;
 
