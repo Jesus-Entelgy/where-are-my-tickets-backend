@@ -164,10 +164,10 @@ VALUES
 
 INSERT INTO applications (name)
 VALUES
-('GitHub'),('GitLab'),('Bitbucket'),('Jira'),('Confluence'),
-('Azure DevOps'),('Slack'),('Microsoft Teams'),('Outlook'),('SharePoint'),
-('OneDrive'),('Jenkins'),('SonarQube'),('Docker'),('Kubernetes'),
-('Postman'),('DBeaver'),('Visual Studio Code'),('IntelliJ IDEA'),('My Time');
+('MesaOne'), ('TaskForge'), ('SprintVision'), ('TechPulse'), ('CloudGestor'),
+('DevTrack'), ('InfraControl'), ('ServiceHub'), ('Nexo Digital'), ('ProyectoFlow'),
+('CodePilot'), ('DeployMaster'), ('InsightOps'), ('DataSphere'), ('TeamBridge'),
+('ControlIT'), ('WorkSync'), ('Arquitectura 360'), ('Nodo Empresarial'), ('Código Central');
 ```
 
 # Paso 15: Verificar los datos
