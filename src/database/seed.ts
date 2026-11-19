@@ -68,14 +68,14 @@ await dataSource.initialize();
 try {
   await dataSource.transaction(async (manager) => {
     await manager.query(
-      'TRUNCATE TABLE "users", "applications" RESTART IDENTITY',
+      'TRUNCATE TABLE "users", "applications", "tickets" RESTART IDENTITY',
     );
     await manager.getRepository(User).insert(SEED_USERS);
     await manager.getRepository(Application).insert(SEED_APPLICATIONS);
   });
 
   console.info(
-    `Seeded ${SEED_USERS.length} users and ${SEED_APPLICATIONS.length} applications.`,
+    `Database reset; seeded ${SEED_USERS.length} users and ${SEED_APPLICATIONS.length} applications.`,
   );
 } finally {
   await dataSource.destroy();
