@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { TicketResponseDto } from './dto/ticket-response.dto.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
@@ -71,6 +72,35 @@ export class TicketsService {
     }
   }
 
+  async update(id: string, input: UpdateTicketDto): Promise<TicketResponseDto> {
+    const update = this.validateUpdate(input);
+
+    try {
+      const result = await this.ticketsRepository.update({ id }, update);
+
+      if (result.affected === 0) {
+        throw new NotFoundException('Ticket not found');
+      }
+
+      if (result.affected !== 1) {
+        throw new Error('Ticket update was not confirmed');
+      }
+
+      const ticket = await this.ticketsRepository.findOneBy({ id });
+      if (!ticket) {
+        throw new NotFoundException('Ticket not found');
+      }
+
+      return this.toResponse(ticket);
+    } catch (error) {
+      if (this.isTitleUniqueViolation(error)) {
+        throw new ConflictException('Ya existe un ticket con ese título');
+      }
+
+      throw error;
+    }
+  }
+
   async create(input: CreateTicketDto): Promise<TicketResponseDto> {
     const ticketInput = this.validateAndNormalize(input);
 
@@ -79,9 +109,7 @@ export class TicketsService {
       return this.toResponse(ticket);
     } catch (error) {
       if (this.isTitleUniqueViolation(error)) {
-        throw new ConflictException(
-          'Ya existe un ticket con ese título',
-        );
+        throw new ConflictException('Ya existe un ticket con ese título');
       }
 
       throw error;
@@ -113,6 +141,73 @@ export class TicketsService {
       priority: input.priority,
       status: input.status,
     };
+  }
+
+  private validateUpdate(
+    input: UpdateTicketDto,
+  ): Partial<Pick<Ticket, 'title' | 'description' | 'priority' | 'status'>> {
+    if (typeof input !== 'object' || input === null) {
+      throw new BadRequestException('Invalid ticket data');
+    }
+
+    const allowedFields = new Set([
+      'title',
+      'description',
+      'priority',
+      'status',
+    ]);
+    if (Object.keys(input).some((field) => !allowedFields.has(field))) {
+      throw new BadRequestException('Invalid ticket data');
+    }
+
+    const update: Partial<
+      Pick<Ticket, 'title' | 'description' | 'priority' | 'status'>
+    > = {};
+
+    if (input.title !== undefined) {
+      if (typeof input.title !== 'string') {
+        throw new BadRequestException('Invalid ticket data');
+      }
+
+      const title = input.title.trim();
+      if (title.length === 0 || title.length > 255) {
+        throw new BadRequestException('Invalid ticket data');
+      }
+
+      update.title = title;
+    }
+
+    if (input.description !== undefined) {
+      if (input.description !== null && typeof input.description !== 'string') {
+        throw new BadRequestException('Invalid ticket data');
+      }
+
+      update.description = input.description;
+    }
+
+    if (input.priority !== undefined) {
+      if (!this.isTicketPriority(input.priority)) {
+        throw new BadRequestException('Invalid ticket data');
+      }
+
+      update.priority = input.priority;
+    }
+
+    if (input.status !== undefined) {
+      if (!this.isTicketStatus(input.status)) {
+        throw new BadRequestException('Invalid ticket data');
+      }
+
+      update.status = input.status;
+    }
+
+    if (Object.keys(update).length === 0) {
+      throw new BadRequestException(
+        'At least one ticket field must be provided',
+      );
+    }
+
+    return update;
   }
 
   private isTicketPriority(value: unknown): value is TicketPriority {

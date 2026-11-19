@@ -1,12 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
+  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { Ticket } from './ticket.entity.js';
 import { TicketsService } from './tickets.service.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 
 describe('TicketsService', () => {
   let ticketsService: TicketsService;
@@ -17,6 +19,7 @@ describe('TicketsService', () => {
     findOne: vi.fn(),
     findOneBy: vi.fn(),
     save: vi.fn(),
+    update: vi.fn(),
   };
 
   const ticket = {
@@ -93,9 +96,9 @@ describe('TicketsService', () => {
   it('throws NotFoundException when deleting an unknown ticket', async () => {
     ticketsRepository.delete.mockResolvedValue({ affected: 0 });
 
-    await expect(
-      ticketsService.deleteById(ticket.id),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(ticketsService.deleteById(ticket.id)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('creates a ticket and defaults an omitted description to null', async () => {
@@ -141,6 +144,76 @@ describe('TicketsService', () => {
         priority: 'HIGH',
         status: 'OPEN',
       }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('updates only the provided fields and returns the updated ticket', async () => {
+    const updatedTicket = { ...ticket, title: 'Updated sprint review' };
+    ticketsRepository.update.mockResolvedValue({ affected: 1 });
+    ticketsRepository.findOneBy.mockResolvedValue(updatedTicket);
+
+    await expect(
+      ticketsService.update(ticket.id, {
+        title: '  Updated sprint review  ',
+      }),
+    ).resolves.toEqual(updatedTicket);
+    expect(ticketsRepository.update).toHaveBeenCalledWith(
+      { id: ticket.id },
+      { title: 'Updated sprint review' },
+    );
+    expect(ticketsRepository.findOneBy).toHaveBeenCalledWith({
+      id: ticket.id,
+    });
+  });
+
+  it('rejects an empty update', async () => {
+    await expect(ticketsService.update(ticket.id, {})).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(ticketsRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('allows clearing the description with null', async () => {
+    const updatedTicket = { ...ticket, description: null };
+    ticketsRepository.update.mockResolvedValue({ affected: 1 });
+    ticketsRepository.findOneBy.mockResolvedValue(updatedTicket);
+
+    await expect(
+      ticketsService.update(ticket.id, { description: null }),
+    ).resolves.toEqual(updatedTicket);
+    expect(ticketsRepository.update).toHaveBeenCalledWith(
+      { id: ticket.id },
+      { description: null },
+    );
+  });
+
+  it('rejects unknown update fields', async () => {
+    const input = Object.assign(new UpdateTicketDto(), { ownerId: 'user-id' });
+
+    await expect(
+      ticketsService.update(ticket.id, input),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(ticketsRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when updating an unknown ticket', async () => {
+    ticketsRepository.update.mockResolvedValue({ affected: 0 });
+
+    await expect(
+      ticketsService.update(ticket.id, { status: 'CLOSED' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('reports a conflict when updating to an existing title', async () => {
+    ticketsRepository.update.mockRejectedValue(
+      new QueryFailedError('UPDATE tickets', [], {
+        code: '23505',
+        constraint: 'UQ_tickets_title',
+      }),
+    );
+
+    await expect(
+      ticketsService.update(ticket.id, { title: 'Existing title' }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 });

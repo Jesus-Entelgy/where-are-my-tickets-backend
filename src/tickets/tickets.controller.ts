@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { TicketResponseDto } from './dto/ticket-response.dto.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { TicketsService } from './tickets.service.js';
 
 @ApiTags('Tickets')
@@ -52,10 +54,24 @@ export class TicketsController {
   @ApiOkResponse({ type: TicketResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid ticket ID' })
   @ApiNotFoundResponse({ description: 'Ticket not found' })
-  getById(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<TicketResponseDto> {
+  getById(@Param('id', ParseUUIDPipe) id: string): Promise<TicketResponseDto> {
     return this.ticketsService.getById(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a ticket' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: TicketResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid ticket ID or update data' })
+  @ApiConflictResponse({
+    description: 'A ticket with this title already exists',
+  })
+  @ApiNotFoundResponse({ description: 'Ticket not found' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateTicketDto: UpdateTicketDto,
+  ): Promise<TicketResponseDto> {
+    return this.ticketsService.update(id, updateTicketDto);
   }
 
   @Delete(':id')
@@ -73,10 +89,10 @@ export class TicketsController {
   @ApiOperation({ summary: 'Create a ticket' })
   @ApiCreatedResponse({ type: TicketResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid ticket data' })
-  @ApiConflictResponse({ description: 'A ticket with this title already exists' })
-  create(
-    @Body() createTicketDto: CreateTicketDto,
-  ): Promise<TicketResponseDto> {
+  @ApiConflictResponse({
+    description: 'A ticket with this title already exists',
+  })
+  create(@Body() createTicketDto: CreateTicketDto): Promise<TicketResponseDto> {
     return this.ticketsService.create(createTicketDto);
   }
 }
