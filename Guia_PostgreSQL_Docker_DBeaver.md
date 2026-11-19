@@ -146,7 +146,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE applications (
-    id BIGSERIAL PRIMARY KEY,
+    id VARCHAR(32) PRIMARY KEY DEFAULT md5(gen_random_uuid()::text),
     name VARCHAR(100) NOT NULL UNIQUE
 );
 ```

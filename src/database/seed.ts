@@ -1,4 +1,5 @@
 import { User } from '../users/user.entity.js';
+import { Application } from '../applications/application.entity.js';
 import dataSource from './data-source.js';
 
 const SEED_USERS: Array<Omit<User, 'id'>> = [
@@ -39,6 +40,29 @@ const SEED_USERS: Array<Omit<User, 'id'>> = [
   },
 ];
 
+const SEED_APPLICATIONS: Array<Omit<Application, 'id'>> = [
+  { name: 'MesaOne' },
+  { name: 'TaskForge' },
+  { name: 'SprintVision' },
+  { name: 'TechPulse' },
+  { name: 'CloudGestor' },
+  { name: 'DevTrack' },
+  { name: 'InfraControl' },
+  { name: 'ServiceHub' },
+  { name: 'Nexo Digital' },
+  { name: 'ProyectoFlow' },
+  { name: 'CodePilot' },
+  { name: 'DeployMaster' },
+  { name: 'InsightOps' },
+  { name: 'DataSphere' },
+  { name: 'TeamBridge' },
+  { name: 'ControlIT' },
+  { name: 'WorkSync' },
+  { name: 'Arquitectura 360' },
+  { name: 'Nodo Empresarial' },
+  { name: 'Código Central' },
+];
+
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
@@ -60,9 +84,12 @@ try {
     }
 
     await manager.getRepository(User).insert(SEED_USERS);
+    await manager.getRepository(Application).insert(SEED_APPLICATIONS);
   });
 
-  console.info(`Database reset; seeded ${SEED_USERS.length} users.`);
+  console.info(
+    `Database reset; seeded ${SEED_USERS.length} users and ${SEED_APPLICATIONS.length} applications.`,
+  );
 } finally {
   await dataSource.destroy();
 }
