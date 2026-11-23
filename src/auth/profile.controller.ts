@@ -1,5 +1,6 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -21,6 +22,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 @ApiTags('Profile')
+@ApiBearerAuth()
 @Controller('profile-me')
 export class ProfileController {
   @Get()

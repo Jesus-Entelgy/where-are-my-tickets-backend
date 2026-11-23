@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
@@ -47,6 +48,17 @@ describe('ProfileController', () => {
 
   it('returns 401 when no access token is provided', async () => {
     await request(app.getHttpServer()).get('/profile-me').expect(401);
+  });
+
+  it('documents the Bearer token requirement in Swagger', () => {
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder().addBearerAuth().build(),
+    );
+
+    expect(document.paths['/profile-me']?.get?.security).toContainEqual({
+      bearer: [],
+    });
   });
 
   it('allows access with a valid Bearer token', async () => {
