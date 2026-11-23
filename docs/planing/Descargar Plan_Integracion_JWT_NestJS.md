@@ -151,15 +151,6 @@ Validar credenciales antes de introducir JWT.
 POST /auth/login
 ```
 
-Body:
-
-```json
-{
-  "email": "jesus@test.com",
-  "password": "123456"
-}
-```
-
 ## Validaciones
 
 - El usuario existe.
