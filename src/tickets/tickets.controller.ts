@@ -24,15 +24,19 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { TicketResponseDto } from './dto/ticket-response.dto.js';
 import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { TicketsService } from './tickets.service.js';
+import { UserRole } from '../users/user.entity.js';
 
 @ApiTags('Tickets')
 @ApiBearerAuth()
 @Controller('tickets')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
@@ -44,6 +48,7 @@ export class TicketsController {
   }
 
   @Get('by-user/:userId')
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @ApiOperation({ summary: 'List tickets assigned to a user' })
   @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiOkResponse({ type: TicketResponseDto, isArray: true })
@@ -56,6 +61,7 @@ export class TicketsController {
   }
 
   @Get('by-title/:title')
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @ApiOperation({ summary: 'Find a ticket by title' })
   @ApiParam({ name: 'title', example: 'Prepare sprint review' })
   @ApiOkResponse({ type: TicketResponseDto })
@@ -66,6 +72,7 @@ export class TicketsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @ApiOperation({ summary: 'Find a ticket by ID' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: TicketResponseDto })
@@ -76,6 +83,7 @@ export class TicketsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @ApiOperation({ summary: 'Update a ticket' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: TicketResponseDto })
@@ -103,6 +111,7 @@ export class TicketsController {
   }
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.USER)
   @ApiOperation({ summary: 'Create a ticket' })
   @ApiCreatedResponse({ type: TicketResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid ticket data' })

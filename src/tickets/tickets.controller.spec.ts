@@ -5,8 +5,9 @@ import { PassportModule } from '@nestjs/passport';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
-import { UserRole } from '../users/user.entity.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/roles.guard.js';
+import { UserRole } from '../users/user.entity.js';
 import { JwtStrategy } from '../auth/jwt.strategy.js';
 import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
@@ -41,6 +42,7 @@ describe('TicketsController authentication', () => {
       controllers: [TicketsController],
       providers: [
         JwtAuthGuard,
+        RolesGuard,
         JwtStrategy,
         { provide: TicketsService, useValue: ticketsService },
         {
@@ -57,6 +59,13 @@ describe('TicketsController authentication', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    ticketsService.getAll.mockResolvedValue([]);
+    ticketsService.getByUserId.mockResolvedValue([]);
+    ticketsService.getByTitle.mockResolvedValue({ id: TICKET_ID });
+    ticketsService.getById.mockResolvedValue({ id: TICKET_ID });
+    ticketsService.update.mockResolvedValue({ id: TICKET_ID });
+    ticketsService.deleteById.mockResolvedValue(undefined);
+    ticketsService.create.mockResolvedValue({ id: TICKET_ID });
   });
 
   afterAll(async () => {
@@ -98,20 +107,95 @@ describe('TicketsController authentication', () => {
     expect(ticketsService.create).not.toHaveBeenCalled();
   });
 
-  it('allows a registered USER with a valid token to access tickets', async () => {
-    ticketsService.getAll.mockResolvedValue([]);
-    const accessToken = await jwtService.signAsync({
+  it('allows USER on designated routes but requires ADMIN on the others', async () => {
+    const userToken = await jwtService.signAsync({
       sub: USER_ID,
       email: 'user@example.com',
       role: UserRole.USER,
     });
 
     await request(app.getHttpServer())
-      .get('/tickets')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .expect(200)
-      .expect([]);
+      .post('/tickets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        title: 'New ticket',
+        priority: 'HIGH',
+        status: 'OPEN',
+        userId: USER_ID,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .get(`/tickets/by-user/${USER_ID}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/tickets/by-title/test-ticket')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ title: 'Updated ticket' })
+      .expect(200);
 
-    expect(ticketsService.getAll).toHaveBeenCalledTimes(1);
+    await request(app.getHttpServer())
+      .get('/tickets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .delete(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+
+    expect(ticketsService.getAll).not.toHaveBeenCalled();
+    expect(ticketsService.deleteById).not.toHaveBeenCalled();
+  });
+
+  it('allows ADMIN on every ticket route', async () => {
+    const adminToken = await jwtService.signAsync({
+      sub: USER_ID,
+      email: 'admin@example.com',
+      role: UserRole.ADMIN,
+    });
+
+    await request(app.getHttpServer())
+      .get('/tickets')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/tickets/by-user/${USER_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/tickets/by-title/test-ticket')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Updated ticket' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .delete(`/tickets/${TICKET_ID}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(204);
+    await request(app.getHttpServer())
+      .post('/tickets')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'New ticket',
+        priority: 'HIGH',
+        status: 'OPEN',
+        userId: USER_ID,
+      })
+      .expect(201);
   });
 });
