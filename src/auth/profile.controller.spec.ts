@@ -46,7 +46,7 @@ describe('ProfileController', () => {
   });
 
   it('returns 401 when no access token is provided', async () => {
-    await request(app.getHttpServer()).get('/profile').expect(401);
+    await request(app.getHttpServer()).get('/profile-me').expect(401);
   });
 
   it('allows access with a valid Bearer token', async () => {
@@ -57,10 +57,14 @@ describe('ProfileController', () => {
     });
 
     await request(app.getHttpServer())
-      .get('/profile')
+      .get('/profile-me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
-      .expect({ message: 'Authenticated' });
+      .expect({
+        id: 'user-id',
+        email: 'ana@example.com',
+        role: UserRole.USER,
+      });
   });
 
   it('returns 401 when the token signature is invalid', async () => {
@@ -72,7 +76,7 @@ describe('ProfileController', () => {
     });
 
     await request(app.getHttpServer())
-      .get('/profile')
+      .get('/profile-me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(401);
   });
