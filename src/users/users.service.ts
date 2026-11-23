@@ -5,7 +5,8 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import bcrypt from 'bcrypt';
+import { scrypt, timingSafeEqual } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -14,7 +15,10 @@ import { UserResponseDto } from './dto/user-response.dto.js';
 import { User, UserRole } from './user.entity.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BCRYPT_SALT_ROUNDS = 12;
+const BCRYPT_MAX_PASSWORD_BYTES = 72;
 const SCRYPT_PARAMETERS = { N: 16384, r: 8, p: 1 };
+const BCRYPT_HASH_PATTERN = /^\$2[ab]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 const SCRYPT_HASH_PATTERN =
   /^scrypt\$16384\$8\$1\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{86})$/;
 
@@ -140,7 +144,7 @@ export class UsersService {
       lastName.length === 0 ||
       lastName.length > 100 ||
       input.password.length === 0 ||
-      input.password.length > 1024
+      Buffer.byteLength(input.password, 'utf8') > BCRYPT_MAX_PASSWORD_BYTES
     ) {
       throw new BadRequestException('Invalid user data');
     }
@@ -154,10 +158,7 @@ export class UsersService {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    const salt = randomBytes(16);
-    const hash = await this.deriveScryptKey(password, salt);
-
-    return `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`;
+    return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
   }
 
   private validateLoginInput(input: LoginUserDto): {
@@ -191,6 +192,14 @@ export class UsersService {
     password: string,
     storedHash: string,
   ): Promise<boolean> {
+    if (BCRYPT_HASH_PATTERN.test(storedHash)) {
+      if (Buffer.byteLength(password, 'utf8') > BCRYPT_MAX_PASSWORD_BYTES) {
+        return false;
+      }
+
+      return bcrypt.compare(password, storedHash);
+    }
+
     const match = SCRYPT_HASH_PATTERN.exec(storedHash);
     if (!match) {
       throw new Error('Stored password hash has an unsupported format');

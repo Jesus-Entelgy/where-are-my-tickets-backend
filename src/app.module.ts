@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ApplicationsModule } from './applications/applications.module.js';
+import { AuthModule } from './auth/auth.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module.js';
         autoLoadEntities: true,
       }),
     }),
+    AuthModule,
     UsersModule,
     ApplicationsModule,
     TicketsModule,

@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import bcrypt from 'bcrypt';
 import { scryptSync } from 'node:crypto';
 import { User } from './user.entity.js';
 import { UsersService } from './users.service.js';
@@ -97,7 +98,7 @@ describe('UsersService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('normalizes email and hashes the password when creating a user', async () => {
+  it('normalizes email and stores a bcrypt hash when creating a user', async () => {
     usersRepository.findOne.mockResolvedValue(null);
     usersRepository.save.mockResolvedValue({
       id: '1',
@@ -130,10 +131,48 @@ describe('UsersService', () => {
     expect(usersRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'ana@example.com',
-        passwordHash: expect.stringMatching(/^scrypt\$16384\$8\$1\$/),
+        passwordHash: expect.stringMatching(/^\$2[ab]\$\d{2}\$/),
         role: 'USER',
       }),
     );
+  });
+
+  it('logs in with a bcrypt password hash', async () => {
+    const password = 'correct password';
+    usersRepository.findOne.mockResolvedValue({
+      id: '1',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+      passwordHash: await bcrypt.hash(password, 4),
+      role: 'USER',
+    });
+
+    await expect(
+      usersService.login({ email: 'ana@example.com', password }),
+    ).resolves.toMatchObject({
+      email: 'ana@example.com',
+      role: 'USER',
+    });
+  });
+
+  it('rejects bcrypt login passwords longer than bcrypt supports', async () => {
+    const password = 'a'.repeat(72);
+    usersRepository.findOne.mockResolvedValue({
+      id: '1',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+      passwordHash: await bcrypt.hash(password, 4),
+      role: 'USER',
+    });
+
+    await expect(
+      usersService.login({
+        email: 'ana@example.com',
+        password: `${password}a`,
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('rejects duplicate emails without saving a user', async () => {
@@ -158,6 +197,20 @@ describe('UsersService', () => {
         firstName: 'Ana',
         lastName: 'Garcia',
         password: 'password123',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(usersRepository.findOne).not.toHaveBeenCalled();
+    expect(usersRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects passwords longer than bcrypt supports in UTF-8 bytes', async () => {
+    await expect(
+      usersService.create({
+        email: 'ana@example.com',
+        firstName: 'Ana',
+        lastName: 'Garcia',
+        password: 'é'.repeat(37),
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
