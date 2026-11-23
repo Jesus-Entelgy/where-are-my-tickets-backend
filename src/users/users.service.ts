@@ -11,7 +11,7 @@ import { QueryFailedError, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { LoginUserDto } from './dto/login-user.dto.js';
 import { UserResponseDto } from './dto/user-response.dto.js';
-import { User } from './user.entity.js';
+import { User, UserRole } from './user.entity.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SCRYPT_PARAMETERS = { N: 16384, r: 8, p: 1 };
@@ -36,14 +36,15 @@ export class UsersService {
       throw new ConflictException('El usuario ya existe');
     }
 
-    const password = await this.hashPassword(userInput.password);
+    const passwordHash = await this.hashPassword(userInput.password);
 
     try {
       const user = await this.usersRepository.save({
         email: userInput.email,
         firstName: userInput.firstName,
         lastName: userInput.lastName,
-        password,
+        passwordHash,
+        role: UserRole.USER,
       });
 
       return this.toResponse(user);
@@ -65,13 +66,14 @@ export class UsersService {
         email: true,
         firstName: true,
         lastName: true,
-        password: true,
+        passwordHash: true,
+        role: true,
       },
     });
 
     if (
       !user ||
-      !(await this.verifyPassword(credentials.password, user.password))
+      !(await this.verifyPassword(credentials.password, user.passwordHash))
     ) {
       throw new UnauthorizedException('Email o contraseña incorrectos');
     }
@@ -86,6 +88,7 @@ export class UsersService {
         email: true,
         firstName: true,
         lastName: true,
+        role: true,
       },
     });
 
@@ -101,6 +104,7 @@ export class UsersService {
         email: true,
         firstName: true,
         lastName: true,
+        role: true,
       },
     });
 
@@ -234,6 +238,7 @@ export class UsersService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      role: user.role,
     };
   }
 }

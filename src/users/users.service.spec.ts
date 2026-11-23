@@ -42,7 +42,8 @@ describe('UsersService', () => {
         email: 'ana@example.com',
         firstName: 'Ana',
         lastName: 'Garcia',
-        password: 'stored-hash',
+        passwordHash: 'stored-hash',
+        role: 'USER',
       },
     ]);
 
@@ -52,6 +53,7 @@ describe('UsersService', () => {
         email: 'ana@example.com',
         firstName: 'Ana',
         lastName: 'Garcia',
+        role: 'USER',
       },
     ]);
   });
@@ -62,7 +64,8 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
-      password: 'stored-hash',
+      passwordHash: 'stored-hash',
+      role: 'ADMIN',
     });
 
     await expect(usersService.getByEmail(' Ana@Example.COM ')).resolves.toEqual(
@@ -71,6 +74,7 @@ describe('UsersService', () => {
         email: 'ana@example.com',
         firstName: 'Ana',
         lastName: 'Garcia',
+        role: 'ADMIN',
       },
     );
     expect(usersRepository.findOne).toHaveBeenCalledWith({
@@ -80,6 +84,7 @@ describe('UsersService', () => {
         email: true,
         firstName: true,
         lastName: true,
+        role: true,
       },
     });
   });
@@ -99,7 +104,8 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
-      password: 'stored-hash',
+      role: 'USER',
+      passwordHash: 'stored-hash',
     });
 
     await expect(
@@ -114,6 +120,7 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
+      role: 'USER',
     });
 
     expect(usersRepository.findOne).toHaveBeenCalledWith({
@@ -123,7 +130,8 @@ describe('UsersService', () => {
     expect(usersRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'ana@example.com',
-        password: expect.stringMatching(/^scrypt\$16384\$8\$1\$/),
+        passwordHash: expect.stringMatching(/^scrypt\$16384\$8\$1\$/),
+        role: 'USER',
       }),
     );
   });
@@ -170,7 +178,8 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
-      password: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+      passwordHash: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+      role: 'USER',
     });
 
     await expect(
@@ -183,6 +192,7 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
+      role: 'USER',
     });
     expect(usersRepository.findOne).toHaveBeenCalledWith({
       where: { email: 'ana@example.com' },
@@ -191,7 +201,8 @@ describe('UsersService', () => {
         email: true,
         firstName: true,
         lastName: true,
-        password: true,
+        passwordHash: true,
+        role: true,
       },
     });
   });
@@ -208,7 +219,8 @@ describe('UsersService', () => {
       email: 'ana@example.com',
       firstName: 'Ana',
       lastName: 'Garcia',
-      password: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+      passwordHash: `scrypt$16384$8$1$${salt.toString('base64url')}$${hash.toString('base64url')}`,
+      role: 'USER',
     });
 
     await expect(
