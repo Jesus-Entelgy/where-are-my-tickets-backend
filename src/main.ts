@@ -13,6 +13,7 @@ async function bootstrap() {
     .setTitle('Where Are My Tickets API')
     .setDescription('API documentation for Where Are My Tickets')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const swaggerDocument = () =>
     SwaggerModule.createDocument(app, swaggerConfig);

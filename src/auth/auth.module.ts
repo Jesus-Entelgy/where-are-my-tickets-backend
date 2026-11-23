@@ -30,5 +30,6 @@ import { ProfileController } from './profile.controller.js';
   ],
   controllers: [AuthController, ProfileController],
   providers: [JwtAuthGuard, JwtStrategy],
+  exports: [JwtAuthGuard],
 })
 export class AuthModule {}

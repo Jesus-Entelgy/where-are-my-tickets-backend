@@ -9,8 +9,10 @@ import {
   Patch,
   ParseUUIDPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -21,13 +23,16 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { TicketResponseDto } from './dto/ticket-response.dto.js';
 import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { TicketsService } from './tickets.service.js';
 
 @ApiTags('Tickets')
+@ApiBearerAuth()
 @Controller('tickets')
+@UseGuards(JwtAuthGuard)
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
