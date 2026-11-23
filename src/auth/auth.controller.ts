@@ -1,6 +1,14 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -13,6 +21,7 @@ import { CreateUserDto } from '../users/dto/create-user.dto.js';
 import { LoginUserDto } from '../users/dto/login-user.dto.js';
 import { UserResponseDto } from '../users/dto/user-response.dto.js';
 import { UsersService } from '../users/users.service.js';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -49,4 +58,19 @@ export class AuthController {
 
     return { access_token: accessToken };
   }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Validate the access token before client-side logout',
+  })
+  @ApiOkResponse({
+    description: 'The access token is valid. The client should discard it.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'The access token is missing, invalid, or expired',
+  })
+  logout(): void {}
 }

@@ -1,10 +1,14 @@
 import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule, JwtService } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { UsersService } from '../users/users.service.js';
 import { AuthController } from './auth.controller.js';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { JwtStrategy } from './jwt.strategy.js';
 
 describe('AuthController', () => {
   const jwtSecret = 'test-secret-with-at-least-32-bytes-long';
@@ -18,9 +22,20 @@ describe('AuthController', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [JwtModule.register({ secret: jwtSecret })],
+      imports: [
+        JwtModule.register({ secret: jwtSecret }),
+        PassportModule.register({ defaultStrategy: 'jwt' }),
+      ],
       controllers: [AuthController],
-      providers: [{ provide: UsersService, useValue: usersService }],
+      providers: [
+        { provide: UsersService, useValue: usersService },
+        JwtAuthGuard,
+        JwtStrategy,
+        {
+          provide: ConfigService,
+          useValue: { getOrThrow: () => jwtSecret },
+        },
+      ],
     }).compile();
 
     app = module.createNestApplication();
@@ -111,5 +126,22 @@ describe('AuthController', () => {
       .post('/auth/login')
       .send({ email: 'ana@example.com', password: 'wrong-password' })
       .expect(401);
+  });
+
+  it('returns 200 for a valid token through POST /auth/logout', async () => {
+    const token = await jwtService.signAsync({
+      sub: '1',
+      email: 'ana@example.com',
+      role: 'USER',
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+  });
+
+  it('returns 401 for POST /auth/logout without a token', async () => {
+    await request(app.getHttpServer()).post('/auth/logout').expect(401);
   });
 });
