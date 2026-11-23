@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { ProfileController } from './profile.controller.js';
+import { RolesGuard } from './roles.guard.js';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { ProfileController } from './profile.controller.js';
     }),
   ],
   controllers: [AuthController, ProfileController],
-  providers: [JwtAuthGuard, JwtStrategy],
-  exports: [JwtAuthGuard],
+  providers: [JwtAuthGuard, JwtStrategy, RolesGuard],
+  exports: [JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}
