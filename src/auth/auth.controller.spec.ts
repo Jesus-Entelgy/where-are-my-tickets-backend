@@ -1,12 +1,15 @@
 import { INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { UsersService } from '../users/users.service.js';
 import { AuthController } from './auth.controller.js';
 
 describe('AuthController', () => {
+  const jwtSecret = 'test-secret-with-at-least-32-bytes-long';
   let app: INestApplication<App>;
+  let jwtService: JwtService;
 
   const usersService = {
     create: vi.fn(),
@@ -15,12 +18,14 @@ describe('AuthController', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [JwtModule.register({ secret: jwtSecret })],
       controllers: [AuthController],
       providers: [{ provide: UsersService, useValue: usersService }],
     }).compile();
 
     app = module.createNestApplication();
     await app.init();
+    jwtService = module.get<JwtService>(JwtService);
   });
 
   beforeEach(() => {
@@ -74,11 +79,22 @@ describe('AuthController', () => {
       role: 'USER',
     });
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'ana@example.com', password: 'password123' })
       .expect(200)
-      .expect({ message: 'Login correcto' });
+      .expect(({ body }) => {
+        expect(body).toHaveProperty('access_token');
+        expect(Object.keys(body)).toEqual(['access_token']);
+      });
+
+    await expect(
+      jwtService.verifyAsync(response.body.access_token),
+    ).resolves.toMatchObject({
+      sub: '1',
+      email: 'ana@example.com',
+      role: 'USER',
+    });
 
     expect(usersService.login).toHaveBeenCalledWith({
       email: 'ana@example.com',
