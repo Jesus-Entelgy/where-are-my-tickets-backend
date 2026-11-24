@@ -43,12 +43,25 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Log in a user with email and password' })
-  @ApiOkResponse({ schema: { example: { access_token: 'xxxxx' } } })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        user: {
+          id: '1',
+          email: 'ana@example.com',
+          firstName: 'Ana',
+          lastName: 'Garcia',
+          role: 'USER',
+        },
+        access_token: 'xxxxx',
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Invalid login data' })
   @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
   async login(
     @Body() loginUserDto: LoginUserDto,
-  ): Promise<{ access_token: string }> {
+  ): Promise<{ user: UserResponseDto; access_token: string }> {
     const user = await this.usersService.login(loginUserDto);
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
@@ -56,7 +69,7 @@ export class AuthController {
       role: user.role,
     });
 
-    return { access_token: accessToken };
+    return { user, access_token: accessToken };
   }
 
   @Post('logout')

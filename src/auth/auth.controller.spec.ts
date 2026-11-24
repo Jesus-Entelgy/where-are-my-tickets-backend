@@ -99,8 +99,17 @@ describe('AuthController', () => {
       .send({ email: 'ana@example.com', password: 'password123' })
       .expect(200)
       .expect(({ body }) => {
+        expect(body).toMatchObject({
+          user: {
+            id: '1',
+            email: 'ana@example.com',
+            firstName: 'Ana',
+            lastName: 'Garcia',
+            role: 'USER',
+          },
+        });
         expect(body).toHaveProperty('access_token');
-        expect(Object.keys(body)).toEqual(['access_token']);
+        expect(Object.keys(body).sort()).toEqual(['access_token', 'user']);
       });
 
     await expect(

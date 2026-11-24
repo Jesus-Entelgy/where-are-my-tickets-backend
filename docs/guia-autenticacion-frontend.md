@@ -66,10 +66,18 @@ La contraseña debe ocupar como máximo 72 bytes en UTF-8.
 }
 ```
 
-Respuesta `200 OK`:
+Respuesta `200 OK`. La respuesta contiene los datos públicos de la cuenta y el
+token; no incluye la contraseña:
 
 ```json
 {
+  "user": {
+    "id": "user-id",
+    "email": "ana@example.com",
+    "firstName": "Ana",
+    "lastName": "Garcia",
+    "role": "USER"
+  },
   "access_token": "<JWT>"
 }
 ```
