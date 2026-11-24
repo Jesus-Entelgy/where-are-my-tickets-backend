@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { UserRole } from '../users/user.entity.js';
+import { UsersService } from '../users/users.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { ProfileController } from './profile.controller.js';
 import { JwtStrategy } from './jwt.strategy.js';
@@ -16,6 +17,9 @@ const JWT_SECRET = 'test-secret-with-at-least-32-bytes-long';
 describe('ProfileController', () => {
   let app: INestApplication<App>;
   let jwtService: JwtService;
+  const usersService = {
+    getByEmail: vi.fn(),
+  };
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -28,6 +32,7 @@ describe('ProfileController', () => {
       ],
       controllers: [ProfileController],
       providers: [
+        { provide: UsersService, useValue: usersService },
         JwtAuthGuard,
         JwtStrategy,
         {
@@ -46,6 +51,10 @@ describe('ProfileController', () => {
     await app.close();
   });
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('returns 401 when no access token is provided', async () => {
     await request(app.getHttpServer()).get('/profile-me').expect(401);
   });
@@ -62,6 +71,13 @@ describe('ProfileController', () => {
   });
 
   it('allows access with a valid Bearer token', async () => {
+    usersService.getByEmail.mockResolvedValue({
+      id: 'user-id',
+      email: 'ana@example.com',
+      firstName: 'Ana',
+      lastName: 'Garcia',
+      role: UserRole.USER,
+    });
     const accessToken = await jwtService.signAsync({
       sub: 'user-id',
       email: 'ana@example.com',
@@ -75,8 +91,12 @@ describe('ProfileController', () => {
       .expect({
         id: 'user-id',
         email: 'ana@example.com',
+        firstName: 'Ana',
+        lastName: 'Garcia',
         role: UserRole.USER,
       });
+
+    expect(usersService.getByEmail).toHaveBeenCalledWith('ana@example.com');
   });
 
   it('returns 401 when the token signature is invalid', async () => {

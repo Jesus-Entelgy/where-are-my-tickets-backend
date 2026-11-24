@@ -174,6 +174,8 @@ El endpoint `GET /profile-me` devuelve la identidad asociada al token:
 {
   "id": "user-id",
   "email": "ana@example.com",
+  "firstName": "Ana",
+  "lastName": "Garcia",
   "role": "USER"
 }
 ```
