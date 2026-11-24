@@ -23,7 +23,10 @@ describe('AuthController', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
-        JwtModule.register({ secret: jwtSecret }),
+        JwtModule.register({
+          secret: jwtSecret,
+          signOptions: { expiresIn: '15m' },
+        }),
         PassportModule.register({ defaultStrategy: 'jwt' }),
       ],
       controllers: [AuthController],
@@ -152,5 +155,55 @@ describe('AuthController', () => {
 
   it('returns 401 for POST /auth/logout without a token', async () => {
     await request(app.getHttpServer()).post('/auth/logout').expect(401);
+  });
+
+  it('returns the same token when it has not expired', async () => {
+    const token = await jwtService.signAsync({
+      sub: '1',
+      email: 'ana@example.com',
+      role: 'USER',
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh-access-token')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect({ access_token: token });
+  });
+
+  it('renews an expired but correctly signed access token', async () => {
+    const expiredToken = await jwtService.signAsync(
+      {
+        sub: '1',
+        email: 'ana@example.com',
+        role: 'USER',
+      },
+      { expiresIn: -1 },
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh-access-token')
+      .set('Authorization', `Bearer ${expiredToken}`)
+      .expect(200);
+
+    expect(response.body.access_token).not.toBe(expiredToken);
+    await expect(
+      jwtService.verifyAsync(response.body.access_token),
+    ).resolves.toMatchObject({
+      sub: '1',
+      email: 'ana@example.com',
+      role: 'USER',
+    });
+  });
+
+  it('returns 401 when the access token is missing or invalid', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/refresh-access-token')
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh-access-token')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
   });
 });

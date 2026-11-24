@@ -124,10 +124,19 @@ El payload del JWT contiene:
 El token expira a los **15 minutos**. El JWT está firmado, no cifrado: su
 payload puede leerse, por lo que no debe contener información secreta.
 
-Actualmente la aplicación usa únicamente el `access_token`. La implementación
-de `refresh-token` queda pospuesta: el login no devuelve un refresh token y no
-hay un mecanismo para renovar el JWT. Cuando el access token expire, el
-frontend debe descartarlo y solicitar al usuario que vuelva a iniciar sesión.
+Actualmente la aplicación usa únicamente el `access_token`; el login no
+devuelve un refresh token separado. `POST /auth/refresh-access-token` recibe
+el access token en la cabecera `Authorization: Bearer <access_token>`. Si la
+firma y el contenido del token son válidos y aún no ha expirado, devuelve el
+mismo token. Si ya expiró, emite otro access token con los mismos datos de
+usuario y la duración configurada (15 minutos).
+
+**Consideración de seguridad:** como se acepta un access token expirado para
+emitir otro, quien obtenga una copia del token puede renovarla repetidamente;
+en la práctica, el token también funciona como credencial de renovación. Este
+endpoint no mantiene sesiones ni ofrece revocación, y `POST /auth/logout` no
+impide renovaciones. El cliente debe seguir eliminando el token al cerrar
+sesión, pero esto no invalida copias que hayan sido sustraídas.
 
 `POST /auth/logout` comprueba que el access token enviado sea válido y devuelve
 `200`, pero no lo invalida ni realiza cambios en el backend. Cualquier copia
@@ -141,6 +150,7 @@ concreto:
 | Método | Ruta | Rol permitido |
 | --- | --- | --- |
 | `POST` | `/auth/logout` | `USER` o `ADMIN` |
+| `POST` | `/auth/refresh-access-token` | `USER` o `ADMIN` |
 | `GET` | `/profile-me` | `USER` o `ADMIN` |
 | `GET` | `/users/by-email/{email}` | `ADMIN` |
 | `GET` | `/tickets` | `ADMIN` |
@@ -212,8 +222,10 @@ una comprobación de autorización del backend.
 ## 6. Respuestas de autenticación y autorización
 
 - **401 Unauthorized:** falta el token, no es válido, ha expirado o no se pudo
-  verificar. Comprueba que se envía la cabecera y, si expiró, vuelve a iniciar
-  sesión.
+  verificar. Si el token solo expiró, llama a
+  `POST /auth/refresh-access-token` con ese token. Si devuelve `200`, guarda el
+  `access_token` de la respuesta y reintenta la petición original; vuelve a
+  iniciar sesión si la renovación responde `401`.
 - **403 Forbidden:** el token es válido, pero el rol no está permitido para esa
   ruta. Por ejemplo, `USER` en `GET /tickets` o
   `GET /users/by-email/{email}`.
@@ -241,3 +253,8 @@ Si Swagger devuelve 401, comprueba que la petición generada incluya
 `Authorization`, que el token no haya expirado y que hayas autorizado Swagger
 después de iniciar sesión. Si devuelve 403, el token se aceptó pero el rol no
 está permitido para esa ruta.
+
+Para renovar un token expirado, ejecuta `POST /auth/refresh-access-token`
+enviando el token expirado en la cabecera Bearer. Si la respuesta incluye un
+token nuevo, actualiza el valor en **Authorize** antes de seguir probando otras
+rutas protegidas.

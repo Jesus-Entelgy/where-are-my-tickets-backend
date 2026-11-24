@@ -10,7 +10,9 @@ export interface AuthTokenPayload {
   role: UserRole;
 }
 
-function isAuthTokenPayload(payload: unknown): payload is AuthTokenPayload {
+export function isAuthTokenPayload(
+  payload: unknown,
+): payload is AuthTokenPayload {
   if (
     typeof payload !== 'object' ||
     payload === null ||
